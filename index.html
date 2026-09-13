@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数字選択ツール</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --accent: #ff6b35;
+    --text: #222;
+    --muted: #888;
+    --border: #ddd;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 16px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+  .container {
+    width: 100%;
+    max-width: 480px;
+  }
+  h1 {
+    font-size: 18px;
+    margin: 4px 0 14px;
+    text-align: center;
+  }
+
+  .add-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 18px;
+  }
+  .add-panel .row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .add-panel .row:last-child { margin-bottom: 0; }
+  .field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .field label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .field input {
+    padding: 12px 10px;
+    font-size: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 100%;
+    min-height: 44px;
+    -webkit-appearance: none;
+  }
+  .add-panel button {
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+    flex: 1;
+  }
+  .add-panel button:active { opacity: 0.75; }
+  .clear-btn {
+    background: none !important;
+    color: var(--muted) !important;
+    border: 1px solid var(--border) !important;
+    font-weight: 400 !important;
+  }
+
+  /* カテゴリごとのブロック */
+  .category-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .category-name-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+  }
+  .category-name {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    border-bottom: 1px dashed transparent;
+  }
+  .category-name:active {
+    opacity: 0.7;
+  }
+  .category-name-input {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    color: var(--text);
+    border: none;
+    border-bottom: 1px solid var(--accent);
+    background: transparent;
+    padding: 0 0 2px;
+    min-width: 60px;
+    max-width: 140px;
+  }
+  .category-count {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .category-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .cat-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted);
+    cursor: pointer;
+    min-height: 30px;
+    white-space: nowrap;
+  }
+  .cat-btn:active { opacity: 0.7; }
+  .cat-btn.danger {
+    color: #d64545;
+    border-color: #f0c9c9;
+    background: #fdf0f0;
+  }
+  .category-progress-track {
+    width: 100%;
+    height: 8px;
+    background: #e9e9ec;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .category-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.25s ease;
+  }
+
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .num-chip {
+    position: relative;
+    width: calc((100% - 8px * 5) / 6);
+    min-width: 48px;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  }
+  .num-chip:active { transform: scale(0.92); }
+  .num-chip.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .num-chip.pressing {
+    background: #f0c9c9;
+    border-color: #d64545;
+  }
+
+  .empty-msg {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 8px 2px;
+    text-align: center;
+  }
+
+  .reset-row {
+    display: flex;
+    justify-content: center;
+  }
+  .reset-btn {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    min-height: 48px;
+  }
+  .reset-btn:active { opacity: 0.75; }
+
+  /* 削除確認モーダル */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+  .modal-box {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px 18px;
+    width: 100%;
+    max-width: 300px;
+    text-align: center;
+  }
+  .modal-box p {
+    font-size: 15px;
+    margin: 0 0 18px;
+    line-height: 1.5;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .modal-actions button {
+    flex: 1;
+    min-height: 44px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .modal-cancel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .modal-confirm {
+    background: #d64545;
+    border: none;
+    color: #fff;
+  }
+  .modal-cancel:active, .modal-confirm:active { opacity: 0.8; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>数字選択ツール</h1>
+
+  <div class="add-panel">
+    <div class="row">
+      <div class="field">
+        <label for="categoryInput">カテゴリ名</label>
+        <input type="text" id="categoryInput" placeholder="例: 1組">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="startInput">開始番号</label>
+        <input type="number" id="startInput" value="1">
+      </div>
+      <div class="field">
+        <label for="countInput">追加する個数</label>
+        <input type="number" id="countInput" value="10" min="1" max="200">
+      </div>
+    </div>
+    <div class="row">
+      <button id="addRangeBtn">まとめて追加</button>
+      <button id="clearAllBtn" class="clear-btn">全部消す</button>
+    </div>
+  </div>
+
+  <div class="add-panel">
+    <div class="row">
+      <div class="field">
+        <label for="customInput">数字を直接入力（カンマ区切りで複数可）</label>
+        <input type="text" id="customInput" placeholder="例: 3, 7, 15, 22">
+      </div>
+    </div>
+    <div class="row">
+      <button id="addCustomBtn">この数字を追加</button>
+    </div>
+  </div>
+
+  <div id="categoryList">
+    <div class="empty-msg" id="emptyMsg">カテゴリ名を入力して「まとめて追加」で数字を作成してください</div>
+  </div>
+
+  <div class="reset-row">
+    <button class="reset-btn" id="resetBtn">解除（選択を元に戻す）</button>
+  </div>
+</div>
+
+<script>
+  const categoryList = document.getElementById('categoryList');
+  const emptyMsg = document.getElementById('emptyMsg');
+  const categoryInput = document.getElementById('categoryInput');
+  const startInput = document.getElementById('startInput');
+  const countInput = document.getElementById('countInput');
+  const addRangeBtn = document.getElementById('addRangeBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const customInput = document.getElementById('customInput');
+  const addCustomBtn = document.getElementById('addCustomBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  // categories: [{ name, items: [{ value, selected }] }]
+  let categories = [];
+  let unnamedCount = 0;
+
+  function showConfirm(message, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+
+    const msg = document.createElement('p');
+    msg.textContent = message;
+
+    const actions = document.createElement('div');
+    actions.className = 'modal-actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'modal-cancel';
+    cancelBtn.textContent = 'キャンセル';
+    cancelBtn.addEventListener('click', () => overlay.remove());
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'modal-confirm';
+    confirmBtn.textContent = '削除する';
+    confirmBtn.addEventListener('click', () => {
+      overlay.remove();
+      onConfirm();
+    });
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+    box.appendChild(msg);
+    box.appendChild(actions);
+    overlay.appendChild(box);
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  function render() {
+    categoryList.querySelectorAll('.category-block').forEach(el => el.remove());
+    emptyMsg.style.display = categories.length === 0 ? 'block' : 'none';
+
+    categories.forEach((cat) => {
+      const block = document.createElement('div');
+      block.className = 'category-block';
+
+      const header = document.createElement('div');
+      header.className = 'category-header';
+
+      const nameWrap = document.createElement('div');
+      nameWrap.className = 'category-name-wrap';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'category-name';
+      nameEl.textContent = cat.name;
+      nameEl.title = 'タップして名前を変更';
+      nameEl.addEventListener('click', () => {
+        const inputEl = document.createElement('input');
+        inputEl.type = 'text';
+        inputEl.className = 'category-name-input';
+        inputEl.value = cat.name;
+
+        const finishEdit = () => {
+          const newName = inputEl.value.trim();
+          if (newName) cat.name = newName;
+          render();
+        };
+        inputEl.addEventListener('blur', finishEdit);
+        inputEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') inputEl.blur();
+        });
+
+        nameWrap.replaceChild(inputEl, nameEl);
+        inputEl.focus();
+        inputEl.select();
+      });
+
+      const countEl = document.createElement('div');
+      countEl.className = 'category-count';
+      const done = cat.items.filter(i => i.selected).length;
+      countEl.textContent = `${done} / ${cat.items.length}`;
+
+      nameWrap.appendChild(nameEl);
+      nameWrap.appendChild(countEl);
+
+      const actions = document.createElement('div');
+      actions.className = 'category-actions';
+
+      const catResetBtn = document.createElement('button');
+      catResetBtn.className = 'cat-btn';
+      catResetBtn.textContent = '解除';
+      catResetBtn.addEventListener('click', () => {
+        cat.items.forEach(i => i.selected = false);
+        render();
+      });
+
+      const catDeleteBtn = document.createElement('button');
+      catDeleteBtn.className = 'cat-btn danger';
+      catDeleteBtn.textContent = '削除';
+      catDeleteBtn.addEventListener('click', () => {
+        categories = categories.filter(c => c !== cat);
+        render();
+      });
+
+      actions.appendChild(catResetBtn);
+      actions.appendChild(catDeleteBtn);
+
+      header.appendChild(nameWrap);
+      header.appendChild(actions);
+      block.appendChild(header);
+
+      const catTrack = document.createElement('div');
+      catTrack.className = 'category-progress-track';
+      const catFill = document.createElement('div');
+      catFill.className = 'category-progress-fill';
+      const catPct = cat.items.length ? Math.round((done / cat.items.length) * 100) : 0;
+      catFill.style.width = catPct + '%';
+      catTrack.appendChild(catFill);
+      block.appendChild(catTrack);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+
+      cat.items.forEach((item) => {
+        const chip = document.createElement('div');
+        chip.className = 'num-chip' + (item.selected ? ' selected' : '');
+        chip.textContent = item.value;
+
+        let pressTimer = null;
+        let longPressed = false;
+
+        const startPress = () => {
+          longPressed = false;
+          pressTimer = setTimeout(() => {
+            longPressed = true;
+            chip.classList.remove('pressing');
+            showConfirm(`「${item.value}」を削除しますか？`, () => {
+              cat.items = cat.items.filter(i => i !== item);
+              render();
+            });
+          }, 550);
+          chip.classList.add('pressing');
+        };
+
+        const cancelPress = () => {
+          clearTimeout(pressTimer);
+          chip.classList.remove('pressing');
+        };
+
+        chip.addEventListener('pointerdown', startPress);
+        chip.addEventListener('pointerup', cancelPress);
+        chip.addEventListener('pointerleave', cancelPress);
+        chip.addEventListener('pointercancel', cancelPress);
+
+        chip.addEventListener('click', () => {
+          if (longPressed) { longPressed = false; return; }
+          item.selected = !item.selected;
+          render();
+        });
+
+        grid.appendChild(chip);
+      });
+
+      block.appendChild(grid);
+      categoryList.appendChild(block);
+    });
+  }
+
+  function addRange() {
+    const start = parseInt(startInput.value, 10);
+    let count = parseInt(countInput.value, 10);
+    if (isNaN(start) || isNaN(count)) return;
+    count = Math.max(1, Math.min(count, 200));
+
+    unnamedCount += 1;
+    const name = categoryInput.value.trim() || `カテゴリ${unnamedCount}`;
+
+    const items = [];
+    for (let i = 0; i < count; i++) {
+      items.push({ value: String(start + i), selected: false });
+    }
+    categories.push({ name, items });
+    categoryInput.value = '';
+    render();
+  }
+
+  addRangeBtn.addEventListener('click', addRange);
+
+  function addCustom() {
+    const raw = customInput.value.trim();
+    if (!raw) return;
+
+    const values = raw
+      .split(/[,、\s]+/)
+      .map(s => s.trim())
+      .filter(s => s !== '' && !isNaN(s));
+
+    if (values.length === 0) return;
+
+    unnamedCount += 1;
+    const name = categoryInput.value.trim() || `カテゴリ${unnamedCount}`;
+
+    const items = values.map(v => ({ value: String(parseInt(v, 10)), selected: false }));
+    categories.push({ name, items });
+    customInput.value = '';
+    categoryInput.value = '';
+    render();
+  }
+
+  addCustomBtn.addEventListener('click', addCustom);
+
+  clearAllBtn.addEventListener('click', () => {
+    categories = [];
+    unnamedCount = 0;
+    render();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    categories.forEach(cat => cat.items.forEach(i => i.selected = false));
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
